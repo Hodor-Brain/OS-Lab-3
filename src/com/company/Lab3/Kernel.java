@@ -21,6 +21,7 @@ public class Kernel extends Thread
   private Vector instructVector = new Vector();
   private Vector<Integer> workingSet = new Vector();
   private Vector<Integer> physicalUnmapped = new Vector();
+  private Vector<Integer> notInWorkingSet = new Vector();
   private String status;
   private boolean doStdoutLog = false;
   private boolean doFileLog = false;
@@ -31,6 +32,7 @@ public class Kernel extends Thread
   public int tau = 10;
   public int tick = 5;
   public int currentTime = 0;
+  public boolean modified = true;
 
   public void init( String commands , String config )  
   {
@@ -484,14 +486,30 @@ public class Kernel extends Thread
           physicalUnmapped.removeElementAt(0);
           workingSet.addElement(page.id);
         }
+        else if(!notInWorkingSet.isEmpty() && modified){
+          int anyVirtual = notInWorkingSet.elementAt(0);
+          Page tempPage = (Page) memVector.elementAt(anyVirtual);
+          page.physical = tempPage.physical;
+          controlPanel.removePhysicalPage(tempPage.id);
+          controlPanel.addPhysicalPage( page.physical , page.id );
+          page.lastTouchTime = currentTime;
+          page.R = 1;
+          tempPage.physical = -1;
+          notInWorkingSet.removeElementAt(0);
+          workingSet.addElement(page.id);
+        }
         else{
-          PageFault.replacePage( memVector, workingSet, physicalUnmapped, tau, currentTime , maxVirtPageIndex,
-                  Virtual2Physical.pageNum( instruct.addr , maxVirtPageIndex, block ) , controlPanel , "R" );
+          PageFault.replacePage( memVector, workingSet, physicalUnmapped, notInWorkingSet, tau, currentTime , maxVirtPageIndex,
+                  Virtual2Physical.pageNum( instruct.addr , maxVirtPageIndex, block ) , controlPanel , modified, "R" );
         }
         controlPanel.pageFaultValueLabel.setText( "YES" );
       } 
       else 
       {
+        if(notInWorkingSet.contains(page.id) && modified){
+          notInWorkingSet.removeElement(page.id);
+          workingSet.addElement(page.id);
+        }
         page.R = 1;
         page.lastTouchTime = currentTime;
         if ( doFileLog )
@@ -527,14 +545,31 @@ public class Kernel extends Thread
           physicalUnmapped.removeElementAt(0);
           workingSet.addElement(page.id);
         }
+        else if(!notInWorkingSet.isEmpty() && modified){
+          int anyVirtual = notInWorkingSet.elementAt(0);
+          Page tempPage = (Page) memVector.elementAt(anyVirtual);
+          page.physical = tempPage.physical;
+          controlPanel.removePhysicalPage(tempPage.id);
+          controlPanel.addPhysicalPage( page.physical , page.id );
+          page.lastTouchTime = currentTime;
+          page.R = 1;
+          page.M = 1;
+          tempPage.physical = -1;
+          notInWorkingSet.removeElementAt(0);
+          workingSet.addElement(page.id);
+        }
         else{
-          PageFault.replacePage( memVector , workingSet, physicalUnmapped, tau, currentTime, maxVirtPageIndex,
-                  Virtual2Physical.pageNum( instruct.addr , maxVirtPageIndex, block ) , controlPanel, "W" );
+          PageFault.replacePage( memVector , workingSet, physicalUnmapped, notInWorkingSet, tau, currentTime, maxVirtPageIndex,
+                  Virtual2Physical.pageNum( instruct.addr , maxVirtPageIndex, block ) , controlPanel, modified, "W" );
         }
         controlPanel.pageFaultValueLabel.setText( "YES" );
       } 
       else 
       {
+        if(notInWorkingSet.contains(page.id) && modified){
+          notInWorkingSet.removeElement(page.id);
+          workingSet.addElement(page.id);
+        }
         page.R = 1;
         page.M = 1;
         page.lastTouchTime = currentTime;
@@ -566,6 +601,7 @@ public class Kernel extends Thread
     memVector.removeAllElements();
     instructVector.removeAllElements();
     workingSet.removeAllElements();
+    notInWorkingSet.removeAllElements();
     physicalUnmapped.removeAllElements();
     controlPanel.statusValueLabel.setText( "STOP" ) ;
     controlPanel.timeValueLabel.setText( "0" ) ;

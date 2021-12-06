@@ -50,21 +50,18 @@ public class PageFault {
    *   simulator, and allows one to modify the current display.
    */
   public static void replacePage ( Vector mem , Vector<Integer> workingSet , Vector<Integer> physicalUnmapped ,
+                                   Vector<Integer> notInWorkingSet,
                                    int tau , int currentTime , int virtPageNum ,
-                                   int replacePageNum , ControlPanel controlPanel , String RorW)
+                                   int replacePageNum , ControlPanel controlPanel , boolean modified, String RorW)
   {
-    int count = 0;
-    int oldestPage = -1;
-    int oldestTime = 0;
     int firstPage = -1;
     int firstCleanPage = -1;
     int greatestAge = -1;
-    int map_count = 0;
-    boolean mapped = false;
     boolean isRZeroFound = false;
 
     Vector<Integer> toDelete = new Vector<>();
     int finalVictim = -1;
+
 
     for (int i = 0; i < workingSet.size(); i++){
       int pageId = workingSet.elementAt(i);
@@ -108,9 +105,16 @@ public class PageFault {
     if (finalVictim != -1){
       for(int i = toDelete.size() - 1; i >= 0; i--){
         Page page = (Page) mem.elementAt(workingSet.elementAt(toDelete.elementAt(i)));
-        physicalUnmapped.addElement(page.physical);
-        controlPanel.removePhysicalPage(page.id);
-        page.physical = -1;
+
+        if(modified){
+          notInWorkingSet.addElement(workingSet.elementAt(toDelete.elementAt(i)));
+        }
+        else {
+          physicalUnmapped.addElement(page.physical);
+          controlPanel.removePhysicalPage(page.id);
+          page.physical = -1;
+        }
+
         page.M = 0;
         page.R = 0;
         workingSet.removeElementAt(toDelete.elementAt(i));
@@ -143,36 +147,5 @@ public class PageFault {
     nextPage.lastTouchTime = currentTime;
     workingSet.addElement(replacePageNum);
 
-
-//    while ( ! (mapped) || count != virtPageNum ) {
-//      Page page = ( Page ) mem.elementAt( count );
-//      if ( page.physical != -1 ) {
-//        if (firstPage == -1) {
-//          firstPage = count;
-//        }
-//        if (page.inMemTime > oldestTime) {
-//          oldestTime = page.inMemTime;
-//          oldestPage = count;
-//          mapped = true;
-//        }
-//      }
-//      count++;
-//      if ( count == virtPageNum ) {
-//        mapped = true;
-//      }
-//    }
-//    if (oldestPage == -1) {
-//      oldestPage = firstPage;
-//    }
-//    Page page = ( Page ) mem.elementAt( oldestPage );
-//    Page nextpage = ( Page ) mem.elementAt( replacePageNum );
-//    controlPanel.removePhysicalPage( oldestPage );
-//    nextpage.physical = page.physical;
-//    controlPanel.addPhysicalPage( nextpage.physical , replacePageNum );
-//    page.inMemTime = 0;
-//    page.lastTouchTime = 0;
-//    page.R = 0;
-//    page.M = 0;
-//    page.physical = -1;
   }
 }
